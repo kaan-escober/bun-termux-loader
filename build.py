@@ -115,7 +115,25 @@ def elf64_size(data: bytes) -> int:
         return 0
 
 def check_bun_marker(data: bytes) -> bool:
-    return b'---- Bun! ----' in data[-256:]
+    """Bun v1.3.13+修改了尾部签名，我兼容了它，同时扩展了验证逻辑"""
+    tail = data[-4096:]
+    
+    # Bun 1.3.13+ 新尾部签名
+    if b'packages by bun' in tail:
+        return True
+    
+    # 旧版 (≤1.3.12)
+    if b'---- Bun! ----' in tail:
+        return True
+    
+    if b'/$bunfs/root/' in data:
+        return True
+    
+    bun_signatures = [b'Bun.', b'bun:main', b'@oven/bun']
+    if any(sig in data[:65536] for sig in bun_signatures):
+        return True
+    
+    return False
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # NATIVE LIB DETECTION
