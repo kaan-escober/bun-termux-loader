@@ -121,11 +121,10 @@ def elf64_size(data: bytes) -> int:
 BUN_MARKERS = [b'---- Bun! ----', b'packages by bun']
 
 def check_bun_marker(data: bytes) -> bool:
-    # Check both old and new markers in trailing data
-    # Bun bundles source maps etc, so marker can be 64KB+ from end
-    trailer = data[-65536:]  # Last 64KB should cover it
+    # Check both old and new markers anywhere in binary
+    # Marker position varies by version (end, near-start, or anywhere in between)
     for marker in BUN_MARKERS:
-        if marker in trailer:
+        if marker in data:
             return True
     return False
 
