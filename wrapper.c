@@ -328,8 +328,12 @@ static void userland_exec(const char *ldso, const char **argv, size_t argc,
 /* ── Main ────────────────────────────────────────────────────────────────── */
 
 int main(int argc, char **argv, char **envp) {
-    int fd = open("/proc/self/exe", O_RDONLY);
-    if (fd < 0) die("open /proc/self/exe failed");
+    char self_path[4096];
+    ssize_t rl = readlink("/proc/self/exe", self_path, sizeof(self_path)-1);
+    if (rl < 0) die("readlink /proc/self/exe failed");
+    self_path[rl] = 0;
+    int fd = open(self_path, O_RDONLY);
+    if (fd < 0) die("open self failed");
 
     /* Read ELF headers */
     uint8_t hdr[64];
