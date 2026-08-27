@@ -114,8 +114,19 @@ def elf64_size(data: bytes) -> int:
     except (ValueError, struct.error):
         return 0
 
+# Supported Bun bundled binary markers
+# Old format: "---- Bun! ----" (legacy)
+# New format: "packages by bun" (recent Bun versions)
+# Must search larger range as Bun embeds source map/assets
+BUN_MARKERS = [b'---- Bun! ----', b'packages by bun']
+
 def check_bun_marker(data: bytes) -> bool:
-    return b'---- Bun! ----' in data[-256:]
+    # Check both old and new markers anywhere in binary
+    # Marker position varies by version (end, near-start, or anywhere in between)
+    for marker in BUN_MARKERS:
+        if marker in data:
+            return True
+    return False
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # NATIVE LIB DETECTION

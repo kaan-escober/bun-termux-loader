@@ -118,11 +118,19 @@ static void extract_to_cache(const uint8_t *data, size_t size,
 
 static void cache_bun_elf(const uint8_t *elf, size_t size,
                           const char *cache_dir, char *out, size_t out_len) {
-    size_t sample = size < 4096 ? size : 4096;
-    uint8_t key[4096 + 8];
+    /* Use first 64KB + last 64KB + size for cache key */
+    /* This avoids cache collision when versions share identical headers */
+    size_t sample = size < 65536 ? size : 65536;
+    size_t last_sample = sample;
+    if (size < last_sample) last_sample = size;
+    size_t key_sz = sample + last_sample + 8;
+    uint8_t *key = malloc(key_sz);
+    if (!key) die("malloc");
     memcpy(key, elf, sample);
-    memcpy(key + sample, &size, 8);
-    uint64_t hash = fnv1a(key, sample + 8);
+    memcpy(key + sample, elf + size - last_sample, last_sample);
+    memcpy(key + sample + last_sample, &size, 8);
+    uint64_t hash = fnv1a(key, key_sz);
+    free(key);
 
     char name[64];
     snprintf(name, sizeof(name), "bun-%016llx", (unsigned long long)hash);
@@ -320,8 +328,16 @@ static void userland_exec(const char *ldso, const char **argv, size_t argc,
 /* ── Main ────────────────────────────────────────────────────────────────── */
 
 int main(int argc, char **argv, char **envp) {
-    int fd = open("/proc/self/exe", O_RDONLY);
-    if (fd < 0) die("open /proc/self/exe failed");
+<<<<<<< HEAD
+=======
+    // Use readlink() instead of direct open("/proc/self/exe")
+    // Some Android kernels truncate /proc/self/exe reads to ELF header size
+    char self_path[4096];
+    ssize_t rl = readlink("/proc/self/exe", self_path, sizeof(self_path)-1);
+    if (rl < 0) die("readlink /proc/self/exe failed");
+    self_path[rl] = 0;
+    int fd = open(self_path, O_RDONLY);
+    if (fd < 0) die("open self failed");
 
     /* Read ELF headers */
     uint8_t hdr[64];
